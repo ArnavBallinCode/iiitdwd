@@ -2,15 +2,43 @@
 import { QuickLink } from "@/components/quick-link";
 import { Marquee } from "@/components/ui/marquee";
 import Image from "next/image";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-interface HeroProps {
-  images: string[];
-}
+export default function LandingSection(): JSX.Element {
+  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function LandingSection({ images }: HeroProps): JSX.Element {
+  // Fetch images only once on component mount
+  useEffect(() => {
+    async function fetchImages() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          "https://assets.iiitdwd.ac.in/api/floating-images.php"
+        );
+        if (!res.ok) throw new Error("Failed to fetch images");
+        const response = await res.json();
+
+        if (response.success && Array.isArray(response.data)) {
+          const imageUrls = response.data.map((item: any) => item.url);
+          setImages(imageUrls);
+        } else {
+          throw new Error("Unexpected API response format");
+        }
+      } catch (err: any) {
+        setError(err.message || "Unknown error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchImages();
+  }, []);
+
   // Randomize images on each render
   const shuffledImages = useMemo(() => {
+    if (images.length === 0) return [];
     const arr = [...images];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -34,7 +62,13 @@ export default function LandingSection({ images }: HeroProps): JSX.Element {
     <div className="flex relative flex-col items-center">
       <div className="flex-1 flex flex-col w-full">
         <div className="relative flex-1 flex w-full flex-col items-center justify-center overflow-hidden">
-          {images.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-10 text-gray-400">
+              Loading images...
+            </div>
+          ) : error ? (
+            <div className="text-center py-10 text-red-500">{error}</div>
+          ) : images.length === 0 ? (
             <div className="text-center py-10 text-gray-400">
               No images to display.
             </div>
